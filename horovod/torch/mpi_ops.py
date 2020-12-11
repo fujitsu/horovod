@@ -79,7 +79,11 @@ def _check_function(function_factory, tensor):
 
 
 def _allreduce_function_factory(tensor):
-    return 'horovod_torch_allreduce_async_' + tensor.type().replace('.', '_')
+    if tensor.is_mkldnn:
+        #assert tensor.dtype is torch.float32
+        return 'horovod_torch_allreduce_async_' + "torch.FloatTensor".replace('.', '_')
+    else:
+        return 'horovod_torch_allreduce_async_' + tensor.type().replace('.', '_')
 
 
 def _allreduce_async(tensor, output, name, op, prescale_factor, postscale_factor):
@@ -368,8 +372,11 @@ def allgather(tensor, name=None):
 
 
 def _broadcast_function_factory(tensor):
-    return 'horovod_torch_broadcast_async_' + tensor.type().replace('.', '_')
-
+    if tensor.is_mkldnn:
+        #assert tensor.dtype is torch.float32
+        return 'horovod_torch_broadcast_async_' + "torch.FloatTensor".replace('.', '_')
+    else:
+        return 'horovod_torch_broadcast_async_' + tensor.type().replace('.', '_')
 
 def _broadcast_async(tensor, output, root_rank, name):
     function = _check_function(_broadcast_function_factory, tensor)

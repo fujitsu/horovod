@@ -58,7 +58,7 @@ void DivideInPlace(::torch::Tensor& tensor, int divisor) {
     return;
   }
 #endif
-  tensor.div_(divisor);
+  tensor.mul_(1./divisor);
 }
 
 int DoAllreduce(::torch::Tensor tensor, ::torch::Tensor output, int divisor,

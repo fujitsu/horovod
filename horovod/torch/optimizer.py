@@ -106,8 +106,13 @@ class _DistributedOptimizer(torch.optim.Optimizer):
                 if p.requires_grad:
                     p.grad = p.data.new(p.size()).zero_()
                     self._requires_update.add(p)
-                    p_tmp = p.expand_as(p)
-                    grad_acc = p_tmp.grad_fn.next_functions[0][0]
+                    if p.is_mkldnn:
+                        p_tmp = p.to_dense().expand_as(p)
+                        grad_acc_tmp = p_tmp.grad_fn.next_functions[0][0]
+                        grad_acc = grad_acc_tmp.next_functions[0][0]
+                    else:
+                        p_tmp = p.expand_as(p)
+                        grad_acc = p_tmp.grad_fn.next_functions[0][0]
                     grad_acc.register_hook(self._make_hook(p))
                     self._grad_accs.append(grad_acc)
 
@@ -161,7 +166,11 @@ class _DistributedOptimizer(torch.optim.Optimizer):
         for p, (handle, ctx) in self._handles.items():
             output = synchronize(handle)
             self._allreduce_delay[p] = self.backward_passes_per_step
-            p.grad.set_(self._compression.decompress(output, ctx))
+            if not p.grad.is_mkldnn:
+                p.grad.set_(self._compression.decompress(output, ctx))
+            else:
+                #assert self._compression is Compression.none
+                pass
         self._handles.clear()
 
         self._synchronized = True
@@ -270,8 +279,13 @@ class _DistributedAdasumOptimizer(torch.optim.Optimizer):
                 if p.requires_grad:
                     p.grad = p.data.new(p.size()).zero_()
                     self._requires_update.add(p)
-                    p_tmp = p.expand_as(p)
-                    grad_acc = p_tmp.grad_fn.next_functions[0][0]
+                    if p.is_mkldnn:
+                        p_tmp = p.to_dense().expand_as(p)
+                        grad_acc_tmp = p_tmp.grad_fn.next_functions[0][0]
+                        grad_acc = grad_acc_tmp.next_functions[0][0]
+                    else:
+                        p_tmp = p.expand_as(p)
+                        grad_acc = p_tmp.grad_fn.next_functions[0][0]
                     grad_acc.register_hook(self._make_hook(p))
                     self._grad_accs.append(grad_acc)
 
